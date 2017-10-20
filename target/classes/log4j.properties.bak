@@ -1,0 +1,24 @@
+#---------------------------------------------------------------------------------------
+# Logger
+#---------------------------------------------------------------------------------------
+# Root
+log4j.rootLogger=INFO, CONSOLE
+
+#---------------------------------------------------------------------------------------
+# Appender
+#---------------------------------------------------------------------------------------
+# for Root
+log4j.appender.CONSOLE=org.apache.log4j.ConsoleAppender
+log4j.appender.CONSOLE.layout=org.apache.log4j.PatternLayout
+log4j.appender.CONSOLE.layout.ConversionPattern=%-5p - %m%n
+
+# OperationLog
+log4j.logger.operation=DEBUG, OPERATION
+
+log4j.appender.OPERATION=org.apache.log4j.RollingFileAppender
+log4j.appender.OPERATION.File=D:/test.log
+log4j.appender.OPERATION.Append=true
+log4j.appender.OPERATION.MaxFileSize=1MB
+log4j.appender.OPERATION.MaxBackupIndex=20
+log4j.appender.OPERATION.layout=org.apache.log4j.PatternLayout
+log4j.appender.OPERATION.layout.ConversionPattern=%-5p - %m%n
