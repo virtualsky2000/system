@@ -6,6 +6,12 @@
 	<artifactId>system</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 
+	<properties>
+		<java.version>1.8</java.version>
+		<maven.compiler.target>${java.version}</maven.compiler.target>
+		<maven.compiler.source>${java.version}</maven.compiler.source>
+	</properties>
+
 	<dependencies>
 
 		<!-- https://mvnrepository.com/artifact/commons-lang/commons-lang -->
