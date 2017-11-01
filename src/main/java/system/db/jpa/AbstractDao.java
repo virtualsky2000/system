@@ -17,7 +17,7 @@ import system.utils.ClassUtils;
 
 public abstract class AbstractDao {
 
-    private Logger log;
+    protected Logger log;
 
     /** エンティティマナージャー */
     @PersistenceContext

@@ -28,9 +28,9 @@ import system.logging.Logger;
 
 public class AbstractDao<T> {
 
-    private Logger log;
+    protected Logger log;
 
-    private Connection conn;
+    protected Connection conn;
 
     private int dbType = 0;
 
@@ -48,12 +48,12 @@ public class AbstractDao<T> {
     };
 
     protected AbstractDao(Connection conn) {
+        if (log == null) {
+            log = LogManager.getLogger(this.getClass());
+        }
         this.conn = conn;
         if (conn.getClass().getName().indexOf(".HiRDB.") > 0) {
             dbType = 1;
-        }
-        if (log == null) {
-            log = LogManager.getLogger(this.getClass());
         }
     }
 

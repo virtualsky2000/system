@@ -3,7 +3,6 @@ package system.validator;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -55,34 +54,31 @@ public class ValidatorUtils {
             }
         }
 
-        Arrays.sort(violation, new Comparator<ConstraintViolation<T>>() {
+        Arrays.sort(violation, (o1, o2) -> {
 
-            @Override
-            public int compare(ConstraintViolation<T> o1, ConstraintViolation<T> o2) {
-                List<Long> lstIndex1 = mapCache.get(o1.getPropertyPath().toString());
-                List<Long> lstIndex2 = mapCache.get(o2.getPropertyPath().toString());
-                int size1 = lstIndex1.size();
-                int size2 = lstIndex2.size();
+            List<Long> lstIndex1 = mapCache.get(o1.getPropertyPath().toString());
+            List<Long> lstIndex2 = mapCache.get(o2.getPropertyPath().toString());
+            int size1 = lstIndex1.size();
+            int size2 = lstIndex2.size();
 
-                for (int i = 0; i < size1; i++) {
-                    long index1 = lstIndex1.get(i);
-                    if (i < size2) {
-                        long index2 = lstIndex2.get(i);
-                        if (index1 < index2) {
-                            return -1;
-                        } else if (index1 > index2) {
-                            return 1;
-                        }
-                    } else {
+            for (int i = 0; i < size1; i++) {
+                long index1 = lstIndex1.get(i);
+                if (i < size2) {
+                    long index2 = lstIndex2.get(i);
+                    if (index1 < index2) {
+                        return -1;
+                    } else if (index1 > index2) {
                         return 1;
                     }
-                }
-
-                if (size1 < size2) {
-                    return -1;
                 } else {
-                    return 0;
+                    return 1;
                 }
+            }
+
+            if (size1 < size2) {
+                return -1;
+            } else {
+                return 0;
             }
 
         });

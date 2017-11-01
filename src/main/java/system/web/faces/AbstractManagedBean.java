@@ -48,7 +48,7 @@ public abstract class AbstractManagedBean {
 
     private String userId;
 
-    private Logger log;
+    protected Logger log;
 
     @PostConstruct
     private void postConstruct() {

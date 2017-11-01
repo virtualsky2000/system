@@ -41,8 +41,6 @@ public abstract class AbstractScript {
     protected static final List<String> lstKey = Arrays.asList("setText", "click", "waitFor", "waitForPageLoad",
             "openWindow", "saveScreen", "start");
 
-    private static final Logger log = LogManager.getLogger(AbstractScript.class);
-
     private static final Pattern pParam = Pattern.compile("\\$\\{(.+)\\}");
 
     protected static List<XmlNode> lstCommonAction;
@@ -56,6 +54,14 @@ public abstract class AbstractScript {
     private String type;
 
     private XmlNode curAction;
+
+    protected Logger log;
+
+    protected AbstractScript() {
+        if (log == null) {
+            log = LogManager.getLogger(this.getClass());
+        }
+    }
 
     public boolean run(String fileName, String type) {
         this.type = type;
