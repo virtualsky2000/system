@@ -23,6 +23,7 @@ import java.util.Map;
 import org.apache.commons.beanutils.BeanUtils;
 
 import system.exception.ApplicationException;
+import system.exception.MustOverrideException;
 import system.logging.LogManager;
 import system.logging.Logger;
 
@@ -31,6 +32,8 @@ public class AbstractDao<T> {
     protected Logger log;
 
     protected Connection conn;
+
+    private int flag = 0;
 
     private int dbType = 0;
 
@@ -227,18 +230,15 @@ public class AbstractDao<T> {
     }
 
     public int insert(T entity) throws SQLException {
-
-        return 0;
+        throw new MustOverrideException(this.getClass());
     }
 
     public int update(T entity) throws SQLException {
-
-        return 0;
+        throw new MustOverrideException(this.getClass());
     }
 
     public int delete(T entity) throws SQLException {
-
-        return 0;
+        throw new MustOverrideException(this.getClass());
     }
 
     private String getFieldName(String key) {
@@ -258,6 +258,10 @@ public class AbstractDao<T> {
 
     protected T mapRow(ResultSet rs, Class<T> clazz) throws SQLException {
         try {
+            if (flag == 0) {
+                log.warn("パフォーマンスのために、" + this.getClass().getName() + ".mapRow()をオーバーライドしてください。");
+                flag = 1;
+            }
             T bean = clazz.newInstance();
             ResultSetMetaData metaData = rs.getMetaData();
             int count = metaData.getColumnCount();

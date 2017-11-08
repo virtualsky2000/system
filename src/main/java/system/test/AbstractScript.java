@@ -253,26 +253,22 @@ public abstract class AbstractScript {
     }
 
     protected By getBy(XmlNode script) {
-        try {
-            String id = script.getAttributeValue("id");
-            if (id != null) {
-                return By.id(id);
-            }
-
-            String name = script.getAttributeValue("name");
-            if (name != null) {
-                return By.name(name);
-            }
-
-            String selector = script.getAttributeValue("selector");
-            if (selector != null) {
-                return By.cssSelector(selector);
-            }
-
-            throw new ScriptException("id or name or selector is must be set");
-        } catch (Exception e) {
-            throw new ScriptException(e, curDriver, script);
+        String id = script.getAttributeValue("id");
+        if (id != null) {
+            return By.id(id);
         }
+
+        String name = script.getAttributeValue("name");
+        if (name != null) {
+            return By.name(name);
+        }
+
+        String selector = script.getAttributeValue("selector");
+        if (selector != null) {
+            return By.cssSelector(selector);
+        }
+
+        throw new ScriptException("id or name or selector must be set", script);
     }
 
     protected void setText(XmlNode script) {

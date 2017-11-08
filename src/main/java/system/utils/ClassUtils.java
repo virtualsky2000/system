@@ -10,6 +10,8 @@ import java.util.Enumeration;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import system.exception.ApplicationException;
+
 public class ClassUtils extends org.apache.commons.lang.ClassUtils {
 
     private static ClassLoader loader;
@@ -79,8 +81,7 @@ public class ClassUtils extends org.apache.commons.lang.ClassUtils {
         try (ZipFile zip = new ZipFile(jarFile)) {
             ZipEntry maven = zip.getEntry("META-INF/maven/");
             if (maven != null) {
-                @SuppressWarnings("unchecked")
-                Enumeration<ZipEntry> enumEntry = (Enumeration<ZipEntry>) zip.entries();
+                Enumeration<ZipEntry> enumEntry = cast(zip.entries());
                 while (enumEntry.hasMoreElements()) {
                     ZipEntry entry = enumEntry.nextElement();
                     String name = entry.getName();
@@ -100,7 +101,7 @@ public class ClassUtils extends org.apache.commons.lang.ClassUtils {
             }
 
         } catch (Exception e) {
-            e.printStackTrace();
+            throw new ApplicationException(e);
         }
 
         return null;

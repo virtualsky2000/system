@@ -213,7 +213,7 @@ public class XmlStreamReader extends AbstractReader {
     }
 
     public XmlNode getRootNode() {
-        return this.root;
+        return root;
     }
 
     public String getComment() {

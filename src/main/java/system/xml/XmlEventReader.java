@@ -31,6 +31,7 @@ import javax.xml.stream.events.XMLEvent;
 
 import system.exception.ApplicationException;
 import system.reader.AbstractReader;
+import system.utils.ClassUtils;
 import system.utils.FileUtils;
 
 public class XmlEventReader extends AbstractReader {
@@ -162,8 +163,7 @@ public class XmlEventReader extends AbstractReader {
     }
 
     protected void startElement(StartElement element) {
-        @SuppressWarnings("unchecked")
-        Iterator<Attribute> iterator = (Iterator<Attribute>) element.getAttributes();
+        Iterator<Attribute> iterator = ClassUtils.cast(element.getAttributes());
         List<XmlAttribute> lstAttribute = null;
 
         if (iterator.hasNext()) {
@@ -230,7 +230,7 @@ public class XmlEventReader extends AbstractReader {
     }
 
     public XmlNode getRootNode() {
-        return this.root;
+        return root;
     }
 
     public String getComment() {

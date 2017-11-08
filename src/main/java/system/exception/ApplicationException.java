@@ -2,6 +2,7 @@ package system.exception;
 
 import system.logging.LogManager;
 import system.logging.Logger;
+import system.utils.ExceptionUtils;
 
 public class ApplicationException extends RuntimeException {
 
@@ -37,15 +38,7 @@ public class ApplicationException extends RuntimeException {
     }
 
     private static String getMsg() {
-        StackTraceElement[] st = Thread.currentThread().getStackTrace();
-        for (int i = 3, len = st.length; i < len; i++) {
-            StackTraceElement element = st[i];
-            String methodName = element.getMethodName();
-            if (!"<init>".equals(methodName)) {
-                return element.getClassName() + "." + methodName + "が失敗しました。";
-            }
-        }
-        return "";
+        return ExceptionUtils.getCurrentMethod() + "が失敗しました。";
     }
 
     public Object[] getObjects() {
