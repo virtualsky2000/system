@@ -13,15 +13,13 @@ import system.utils.FileUtils;
 
 public class FastXmlReader extends AbstractReader {
 
-    private final static int START_DOCUMENT = 0;
+    private final static int DEFAULT_BUF_SIZE = 8192;
 
-    private final static int START_TAG = 1;
+    private int curRow = 1;
 
-    protected int curRow = 1;
+    private int curCol = 1;
 
-    protected int curCol = 1;
-
-    protected int curDepth = 0;
+    private int curDepth = 0;
 
     private int offset = 0;
 
@@ -35,13 +33,9 @@ public class FastXmlReader extends AbstractReader {
 
     private boolean change = false;
 
-    private int event = START_DOCUMENT;
-
     private char[] buf;
 
     private int bufSize;
-
-    private final static int DEFAULT_BUF_SIZE = 8192;
 
     private List<String> lstTagName = new ArrayList<>();
 
@@ -83,7 +77,9 @@ public class FastXmlReader extends AbstractReader {
 
             startDocument();
 
-            while (processText() != -1)
+            processDocument();
+
+            while (processTag() != -1)
                 ;
 
             endDocument();
@@ -272,22 +268,10 @@ public class FastXmlReader extends AbstractReader {
         });
     }
 
-    private int processText() {
-        switch (event) {
-        case START_DOCUMENT:
-            processDocument();
-            break;
-        case START_TAG:
-            processTag();
-            break;
-        }
-
-        return event;
-    }
-
     private void processDocument() {
         read();
         skipSpace();
+        int ofs = offset;
         char c = buf[offset];
         if (c != '<') {
             throw new ParseXmlException(
@@ -299,14 +283,14 @@ public class FastXmlReader extends AbstractReader {
         if ("?xml".equalsIgnoreCase(tag)) {
             // <?xml
             getAttributies();
+        } else {
+            offset = ofs;
         }
-        event = START_TAG;
     }
 
-    private void processTag() {
+    private int processTag() {
         if (offset == bytes) {
-            event = -1;
-            return;
+            return -1;
         }
 
         skipSpace();
@@ -331,8 +315,6 @@ public class FastXmlReader extends AbstractReader {
                     throw new ParseXmlException("DOCTYPE can not close.");
                 }
                 moveCursor();
-
-                event = START_TAG;
             } else if (tagName.equalsIgnoreCase("!--")) {
                 // コメント
                 String comment = getComment();
@@ -365,6 +347,8 @@ public class FastXmlReader extends AbstractReader {
             String tagText = getTagText();
             setTagText(tagText);
         }
+
+        return 0;
     }
 
     private void getAttributies() {
