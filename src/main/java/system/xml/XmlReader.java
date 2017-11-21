@@ -1,7 +1,6 @@
 package system.xml;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
@@ -19,7 +18,6 @@ import org.xml.sax.SAXException;
 import org.xml.sax.ext.LexicalHandler;
 import org.xml.sax.helpers.DefaultHandler;
 
-import system.exception.ApplicationException;
 import system.reader.AbstractReader;
 import system.utils.FileUtils;
 
@@ -52,19 +50,30 @@ public class XmlReader extends AbstractReader {
         return reader;
     }
 
+    public static XmlReader load(InputStreamReader sr) {
+        XmlReader reader = new XmlReader(sr);
+        reader.load();
+
+        return reader;
+    }
+
     protected XmlReader(File file, Charset charset) {
         super(file, charset);
+    }
+
+    protected XmlReader(InputStreamReader sr) {
+        super(sr);
     }
 
     public void load() {
         try {
             SAXParser parser = factory.newSAXParser();
-            InputSource is = new InputSource(new InputStreamReader(new FileInputStream(file), charset));
+            InputSource is = new InputSource(sr);
             XmlReaderHandler readerHandler = new XmlReaderHandler();
             parser.getXMLReader().setProperty("http://xml.org/sax/properties/lexical-handler", readerHandler);
             parser.parse(is, readerHandler);
         } catch (ParserConfigurationException | SAXException | IOException e) {
-            throw new ApplicationException("Xmlファイル「" + file.getAbsolutePath() + "」読込が失敗しました。", e);
+            throwException("Xml", e);
         }
     }
 

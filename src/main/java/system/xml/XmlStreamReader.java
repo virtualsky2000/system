@@ -1,8 +1,6 @@
 package system.xml;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
@@ -15,7 +13,6 @@ import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
-import system.exception.ApplicationException;
 import system.reader.AbstractReader;
 import system.utils.FileUtils;
 
@@ -46,8 +43,19 @@ public class XmlStreamReader extends AbstractReader {
         return reader;
     }
 
+    public static XmlStreamReader load(InputStreamReader sr) {
+        XmlStreamReader reader = new XmlStreamReader(sr);
+        reader.load();
+
+        return reader;
+    }
+
     protected XmlStreamReader(File file, Charset charset) {
         super(file, charset);
+    }
+
+    protected XmlStreamReader(InputStreamReader sr) {
+        super(sr);
     }
 
     public void load() {
@@ -56,7 +64,6 @@ public class XmlStreamReader extends AbstractReader {
 
     public void load(StreamFilter filter) {
         try {
-            InputStreamReader sr = new InputStreamReader(new FileInputStream(file), charset);
             XMLStreamReader reader = factory.createXMLStreamReader(sr);
 
             if (filter != null) {
@@ -69,8 +76,8 @@ public class XmlStreamReader extends AbstractReader {
             }
 
             reader.close();
-        } catch (FileNotFoundException | XMLStreamException e) {
-            throw new ApplicationException("Xmlファイル「" + file.getAbsolutePath() + "」読込が失敗しました。", e);
+        } catch (XMLStreamException e) {
+            throwException("Xml", e);
         }
     }
 
