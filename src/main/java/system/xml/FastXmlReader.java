@@ -33,6 +33,8 @@ public class FastXmlReader extends AbstractReader {
 
     private boolean first = false;
 
+    private boolean change = false;
+
     private int event = START_DOCUMENT;
 
     private char[] buf;
@@ -116,11 +118,11 @@ public class FastXmlReader extends AbstractReader {
                 curCol++;
             }
 
-            if (bytes < buf.length) {
+            if (bytes < bufSize) {
                 // EOF
                 throw new ParseXmlException("invalid xml file.");
             }
-            if (offset == buf.length) {
+            if (offset == bufSize) {
                 read();
                 if (bytes == 0) {
                     // EOF
@@ -134,6 +136,7 @@ public class FastXmlReader extends AbstractReader {
         try {
             bytes = sr.read(buf);
             offset = 0;
+            change = true;
         } catch (IOException e) {
             throw new ParseXmlException(e);
         }
@@ -141,7 +144,7 @@ public class FastXmlReader extends AbstractReader {
 
     private void moveCursor() {
         offset++;
-        if (offset == buf.length) {
+        if (offset == bufSize) {
             read();
         }
     }
@@ -162,17 +165,20 @@ public class FastXmlReader extends AbstractReader {
                     return sbText.toString();
                 }
             }
-            if (bytes < buf.length) {
+            if (bytes < bufSize) {
                 // EOF
                 throw new ParseXmlException("invalid xml file.");
             }
-            if (offset == buf.length) {
+            if (offset == bufSize) {
+                if (bInDoubleQuote || bInSigleQuote) {
+                    sbText.append(buf, start + 1, bufSize - start - 1);
+                } else {
+                    sbText.append(buf, start, bufSize - start);
+                }
                 read();
                 if (bytes == 0) {
                     // EOF
                     throw new ParseXmlException("invalid xml file.");
-                } else {
-                    sbText.append(buf, start, offset - start + 1);
                 }
             }
         }
@@ -192,6 +198,7 @@ public class FastXmlReader extends AbstractReader {
         bInSigleQuote = false;
         bInDoubleQuote = false;
         first = true;
+        change = false;
 
         return getText((sbText, start, c) -> {
             if (first && start == offset) {
@@ -204,10 +211,20 @@ public class FastXmlReader extends AbstractReader {
                 }
             }
             if (bInDoubleQuote && c == '"' && !first) {
-                sbText.append(buf, start + 1, offset - 1 - start);
+                if (change == false) {
+                    sbText.append(buf, start + 1, offset - 1 - start);
+                } else {
+                    sbText.append(buf, start, offset - start);
+                }
+                bInDoubleQuote = false;
                 return 0;
             } else if (bInSigleQuote && c == '\'' && !first) {
-                sbText.append(buf, start + 1, offset - 1 - start);
+                if (change == false) {
+                    sbText.append(buf, start + 1, offset - 1 - start);
+                } else {
+                    sbText.append(buf, start, offset - start);
+                }
+                bInSigleQuote = false;
                 return 0;
             }
             if (first) {
