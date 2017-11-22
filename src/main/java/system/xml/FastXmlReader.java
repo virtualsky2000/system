@@ -15,6 +15,10 @@ public class FastXmlReader extends AbstractReader {
 
     private final static int DEFAULT_BUF_SIZE = 8192;
 
+    private char[] buf;
+
+    private int bufSize;
+
     private int curRow = 1;
 
     private int curCol = 1;
@@ -25,6 +29,8 @@ public class FastXmlReader extends AbstractReader {
 
     private int bytes = 0;
 
+    private int endComment = 0;
+
     private boolean bInDoubleQuote = false;
 
     private boolean bInSigleQuote = false;
@@ -32,10 +38,6 @@ public class FastXmlReader extends AbstractReader {
     private boolean first = false;
 
     private boolean change = false;
-
-    private char[] buf;
-
-    private int bufSize;
 
     private List<String> lstTagName = new ArrayList<>();
 
@@ -131,8 +133,10 @@ public class FastXmlReader extends AbstractReader {
     private void read() {
         try {
             bytes = sr.read(buf);
-            offset = 0;
-            change = true;
+            if (bytes > -1) {
+                offset = 0;
+                change = true;
+            }
         } catch (IOException e) {
             throw new ParseXmlException(e);
         }
@@ -167,7 +171,11 @@ public class FastXmlReader extends AbstractReader {
             }
             if (offset == bufSize) {
                 if (bInDoubleQuote || bInSigleQuote) {
-                    sbText.append(buf, start + 1, bufSize - start - 1);
+                    if (change == false) {
+                        sbText.append(buf, start + 1, bufSize - start - 1);
+                    } else {
+                        sbText.append(buf, start, bufSize - start);
+                    }
                 } else {
                     sbText.append(buf, start, bufSize - start);
                 }
@@ -251,18 +259,21 @@ public class FastXmlReader extends AbstractReader {
     }
 
     private String getComment() {
+        endComment = 0;
+
         return getText((sbText, start, c) -> {
             if (c == '-') {
-                moveCursor();
-                c = buf[offset];
-                if (c == '-') {
-                    moveCursor();
-                    c = buf[offset];
-                    if (c == '>') {
-                        sbText.append(buf, start, offset - 2 - start);
-                        return 0;
-                    }
+                endComment++;
+            } else if (c == '>') {
+                if (endComment >= 2) {
+                    sbText.append(buf, start, offset - start);
+                    sbText.setLength(sbText.length() - 2);
+                    return 0;
+                } else {
+                    endComment = 0;
                 }
+            } else {
+                endComment = 0;
             }
             return -1;
         });
@@ -289,7 +300,7 @@ public class FastXmlReader extends AbstractReader {
     }
 
     private int processTag() {
-        if (offset == bytes) {
+        if (offset == bytes || bytes == -1) {
             return -1;
         }
 
