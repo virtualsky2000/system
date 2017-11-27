@@ -45,36 +45,53 @@ public class FastXmlReader extends AbstractReader {
 
     private List<String> lstTagName = new ArrayList<>();
 
-    private List<String> lstPath = new ArrayList<>();
+    private List<String> lstPathFilter = null;
 
     public static FastXmlReader load(String fileName) {
-        return load(FileUtils.getFile(fileName), Charset.defaultCharset());
+        return load(FileUtils.getFile(fileName), Charset.defaultCharset(), null);
+    }
+
+    public static FastXmlReader load(String fileName, List<String> lstPathFilter) {
+        return load(FileUtils.getFile(fileName), Charset.defaultCharset(), lstPathFilter);
     }
 
     public static FastXmlReader load(String fileName, Charset charset) {
-        return load(FileUtils.getFile(fileName), charset);
+        return load(FileUtils.getFile(fileName), charset, null);
     }
 
-    public static FastXmlReader load(File file, Charset charset) {
-        FastXmlReader reader = new FastXmlReader(file, charset);
+    public static FastXmlReader load(String fileName, Charset charset, List<String> lstPathFilter) {
+        return load(FileUtils.getFile(fileName), charset, lstPathFilter);
+    }
+
+    public static FastXmlReader load(File file, Charset charset, List<String> lstPathFilter) {
+        FastXmlReader reader = new FastXmlReader(file, charset, lstPathFilter);
         reader.load();
 
         return reader;
     }
 
     public static FastXmlReader load(InputStreamReader sr) {
-        FastXmlReader reader = new FastXmlReader(sr);
+        FastXmlReader reader = new FastXmlReader(sr, null);
         reader.load();
 
         return reader;
     }
 
-    protected FastXmlReader(File file, Charset charset) {
-        super(file, charset);
+    public static FastXmlReader load(InputStreamReader sr, List<String> lstPathFilter) {
+        FastXmlReader reader = new FastXmlReader(sr, lstPathFilter);
+        reader.load();
+
+        return reader;
     }
 
-    protected FastXmlReader(InputStreamReader sr) {
+    protected FastXmlReader(File file, Charset charset, List<String> lstPathFilter) {
+        super(file, charset);
+        this.lstPathFilter = lstPathFilter;
+    }
+
+    protected FastXmlReader(InputStreamReader sr, List<String> lstPathFilter) {
         super(sr);
+        this.lstPathFilter = lstPathFilter;
     }
 
     @Override
@@ -82,8 +99,6 @@ public class FastXmlReader extends AbstractReader {
         try {
             setBufSize();
             buf = new char[bufSize];
-
-            setFilter();
 
             startDocument();
 
@@ -108,14 +123,6 @@ public class FastXmlReader extends AbstractReader {
 
     public void setBufSize() {
         setBufSize(DEFAULT_BUF_SIZE);
-    }
-
-    public void setFilter() {
-        addFilter("/Configuration/Appenders/");
-    }
-
-    public void addFilter(String path) {
-        lstPath.add(path);
     }
 
     private void skipSpace() {
@@ -325,7 +332,7 @@ public class FastXmlReader extends AbstractReader {
     }
 
     private boolean inPath(String curPath) {
-        for (String path : lstPath) {
+        for (String path : lstPathFilter) {
             if (path.startsWith(curPath) || curPath.startsWith(path)) {
                 return true;
             }
@@ -373,7 +380,7 @@ public class FastXmlReader extends AbstractReader {
                     lstTagName.add(tagName);
                     curDepth++;
                     String curPath = "/" + StringUtils.join(lstTagName.toArray(), "/") + "/";
-                    if (inPath(curPath)) {
+                    if (lstPathFilter == null || inPath(curPath)) {
                         skip = false;
                         startElement(tagName);
                         getAttributies();
