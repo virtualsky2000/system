@@ -636,7 +636,7 @@ public class FastXmlReader extends AbstractReader {
 
     public void setComment(String comment) {
         log.debug("comment = {}", comment);
-
+        this.comment = comment;
     }
 
     private interface getTextFunc {
