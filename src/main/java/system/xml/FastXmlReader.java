@@ -44,7 +44,7 @@ public class FastXmlReader extends AbstractReader {
 
     private boolean skip = false;
 
-    private boolean special = false;
+    private boolean escape = false;
 
     private List<String> lstTagName = new ArrayList<>();
 
@@ -300,10 +300,10 @@ public class FastXmlReader extends AbstractReader {
     }
 
     private String getTagText() {
-        special = false;
+        escape = false;
         String tagText = getText((sbText, start, c) -> {
             if (c == '&') {
-                special = true;
+                escape = true;
             }
             if (c == '<') {
                 sbText.append(buf, start, offset - start);
@@ -312,7 +312,7 @@ public class FastXmlReader extends AbstractReader {
             return -1;
         });
 
-        if (special) {
+        if (escape) {
             tagText = StringEscapeUtils.unescapeXml(tagText);
         }
         return tagText;
