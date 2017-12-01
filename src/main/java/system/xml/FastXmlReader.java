@@ -7,7 +7,8 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang.StringEscapeUtils;
+import org.apache.commons.lang.StringUtils;
 
 import system.exception.ApplicationException;
 import system.reader.AbstractReader;
@@ -43,9 +44,19 @@ public class FastXmlReader extends AbstractReader {
 
     private boolean skip = false;
 
+    private boolean special = false;
+
     private List<String> lstTagName = new ArrayList<>();
 
     private List<String> lstPathFilter = null;
+
+    private XmlNode root;
+
+    private XmlNode parent;
+
+    private String value;
+
+    private String comment;
 
     public static FastXmlReader load(String fileName) {
         return load(FileUtils.getFile(fileName), Charset.defaultCharset(), null);
@@ -169,13 +180,21 @@ public class FastXmlReader extends AbstractReader {
             }
             if (bytes < bufSize) {
                 // EOF
-                throw new ParseXmlException("invalid xml file.");
+                if (curDepth > 0) {
+                    throw new ParseXmlException("invalid xml file.");
+                } else {
+                    return;
+                }
             }
             if (offset == bufSize) {
                 read();
                 if (bytes == 0) {
                     // EOF
-                    throw new ParseXmlException("invalid xml file.");
+                    if (curDepth > 0) {
+                        throw new ParseXmlException("invalid xml file.");
+                    } else {
+                        return;
+                    }
                 }
             }
         }
@@ -281,13 +300,22 @@ public class FastXmlReader extends AbstractReader {
     }
 
     private String getTagText() {
-        return getText((sbText, start, c) -> {
+        special = false;
+        String tagText = getText((sbText, start, c) -> {
+            if (c == '&') {
+                special = true;
+            }
             if (c == '<') {
                 sbText.append(buf, start, offset - start);
                 return 0;
             }
             return -1;
         });
+
+        if (special) {
+            tagText = StringEscapeUtils.unescapeXml(tagText);
+        }
+        return tagText;
     }
 
     private String getComment() {
@@ -346,6 +374,9 @@ public class FastXmlReader extends AbstractReader {
         }
 
         skipSpace();
+        if (offset == bytes) {
+            return -1;
+        }
         char c = buf[offset];
         if (curDepth == 0 && c != '<') {
             throw new ParseXmlException(
@@ -361,7 +392,7 @@ public class FastXmlReader extends AbstractReader {
                 moveCursor();
                 skipSpace();
                 String docType = getTagName();
-                log.info("DOCTYPE = {}", docType);
+                log.debug("DOCTYPE = {}", docType);
 
                 if (buf[offset] != '>') {
                     throw new ParseXmlException("DOCTYPE can not close.");
@@ -399,6 +430,7 @@ public class FastXmlReader extends AbstractReader {
                     }
                     lstTagName.remove(lstTagName.size() - 1);
                     curDepth--;
+                    endElement(tagName);
                 }
             }
             moveCursor();
@@ -555,32 +587,55 @@ public class FastXmlReader extends AbstractReader {
     }
 
     public void startDocument() {
-        log.info("startDocument...");
+        log.debug("startDocument...");
 
     }
 
     public void endDocument() {
-        log.info("endDocument...");
+        log.debug("endDocument...");
 
     }
 
     public void startElement(String tagName) {
-        log.info("tagName = {}", tagName);
+        log.debug("tagName = {}", tagName);
 
+        XmlNode node = new XmlNode(parent, tagName, null);
+
+        if (root == null) {
+            root = node;
+        }
+
+        parent = node;
+        value = "";
+    }
+
+    public void endElement(String tagName) {
+        log.debug("endElement...");
+        parent.setValue(value);
+        parent = parent.getParent();
+        value = "";
     }
 
     public void startAttribute(String attrName, String attrValue) {
-        log.info("attrName = {}, attrValue = {}", attrName, attrValue);
+        log.debug("attrName = {}, attrValue = {}", attrName, attrValue);
 
+        if (curDepth > 0) {
+            List<XmlAttribute> lstAttribute = parent.getLstAttribute();
+            if (lstAttribute == null) {
+                lstAttribute = new ArrayList<>();
+                parent.setLstAttribute(lstAttribute);
+            }
+            lstAttribute.add(new XmlAttribute(attrName, attrValue));
+        }
     }
 
     public void setTagText(String tagText) {
-        log.info("tagText = {}", tagText);
-
+        log.debug("tagText = {}", tagText);
+        value = tagText;
     }
 
     public void setComment(String comment) {
-        log.info("comment = {}", comment);
+        log.debug("comment = {}", comment);
 
     }
 

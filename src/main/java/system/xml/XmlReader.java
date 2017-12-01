@@ -116,7 +116,7 @@ public class XmlReader extends AbstractReader {
         log.debug("endElement");
         parent.setValue(value);
         parent = parent.getParent();
-        comment = "";
+        value = "";
     }
 
     protected void characters(char[] ch, int start, int length) throws SAXException {

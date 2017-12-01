@@ -188,7 +188,7 @@ public class XmlEventReader extends AbstractReader {
     protected void endElement(EndElement event) {
         parent.setValue(value);
         parent = parent.getParent();
-        comment = "";
+        value = "";
     }
 
     protected void processingInstruction(ProcessingInstruction event) {

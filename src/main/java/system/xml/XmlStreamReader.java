@@ -171,7 +171,7 @@ public class XmlStreamReader extends AbstractReader {
     protected void endElement(XMLStreamReader reader) {
         parent.setValue(value);
         parent = parent.getParent();
-        comment = "";
+        value = "";
     }
 
     protected void processingInstruction(XMLStreamReader reader) {
@@ -179,7 +179,7 @@ public class XmlStreamReader extends AbstractReader {
     }
 
     protected void characters(XMLStreamReader reader) {
-        value = new String(reader.getTextCharacters(), reader.getTextStart(), reader.getTextLength());
+        value += new String(reader.getTextCharacters(), reader.getTextStart(), reader.getTextLength());
     }
 
     protected void comment(XMLStreamReader reader) {
