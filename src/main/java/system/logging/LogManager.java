@@ -61,11 +61,12 @@ public class LogManager {
         try {
             Class.forName("org.slf4j.Logger");
             Class.forName("ch.qos.logback.core.Context");
+            Class.forName("ch.qos.logback.classic.Logger");
         } catch (ClassNotFoundException e) {
             return false;
         }
 
-        if (ClassUtils.getResource("logback.xml") == null) {
+        if (ClassUtils.getResource("logback.xml") == null && ClassUtils.getResource("logback-test.xml") == null) {
             return false;
         }
 

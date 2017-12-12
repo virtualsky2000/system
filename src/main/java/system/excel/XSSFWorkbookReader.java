@@ -193,7 +193,6 @@ public class XSSFWorkbookReader extends AbstractWorkbookReader {
         if (loadCell) {
             log.debug("load cell : {}", columnIndex);
             curCell = curRow.createCell(columnIndex);
-            curAttributes.clear();
             curAttributes.setAttributes(attributes);
         } else {
             curCell = null;

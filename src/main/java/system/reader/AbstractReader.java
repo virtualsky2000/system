@@ -23,9 +23,7 @@ public abstract class AbstractReader {
     public abstract void load();
 
     protected AbstractReader(File file, Charset charset) {
-        if (log == null) {
-            log = LogManager.getLogger(this.getClass());
-        }
+        log = LogManager.getLogger(this.getClass());
         this.file = file;
         this.charset = charset;
         try {
@@ -36,9 +34,7 @@ public abstract class AbstractReader {
     }
 
     protected AbstractReader(InputStreamReader sr) {
-        if (log == null) {
-            log = LogManager.getLogger(this.getClass());
-        }
+        log = LogManager.getLogger(this.getClass());
         this.sr = sr;
     }
 

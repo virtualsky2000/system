@@ -26,29 +26,29 @@ public class FastXmlReader extends AbstractReader {
 
     private int curCol = 1;
 
-    private int curDepth = 0;
+    private int curDepth;
 
-    private int offset = 0;
+    private int offset;
 
-    private int bytes = 0;
+    private int bytes;
 
-    private int endComment = 0;
+    private int endComment;
 
-    private boolean bInDoubleQuote = false;
+    private boolean bInDoubleQuote;
 
-    private boolean bInSigleQuote = false;
+    private boolean bInSigleQuote;
 
-    private boolean first = false;
+    private boolean first;
 
-    private boolean change = false;
+    private boolean change;
 
-    private boolean skip = false;
+    private boolean skip;
 
-    private boolean escape = false;
+    private boolean escape;
 
     private List<String> lstTagName = new ArrayList<>();
 
-    private List<String> lstPathFilter = null;
+    private List<String> lstPathFilter;
 
     private XmlNode root;
 
@@ -59,56 +59,67 @@ public class FastXmlReader extends AbstractReader {
     private String comment;
 
     public static FastXmlReader load(String fileName) {
-        return load(FileUtils.getFile(fileName), Charset.defaultCharset(), null);
+        return load(FileUtils.getFile(fileName), Charset.defaultCharset(), null, 0);
     }
 
     public static FastXmlReader load(String fileName, List<String> lstPathFilter) {
-        return load(FileUtils.getFile(fileName), Charset.defaultCharset(), lstPathFilter);
+        return load(FileUtils.getFile(fileName), Charset.defaultCharset(), lstPathFilter, 0);
     }
 
     public static FastXmlReader load(String fileName, Charset charset) {
-        return load(FileUtils.getFile(fileName), charset, null);
+        return load(FileUtils.getFile(fileName), charset, null, 0);
     }
 
     public static FastXmlReader load(String fileName, Charset charset, List<String> lstPathFilter) {
-        return load(FileUtils.getFile(fileName), charset, lstPathFilter);
+        return load(FileUtils.getFile(fileName), charset, lstPathFilter, 0);
     }
 
-    public static FastXmlReader load(File file, Charset charset, List<String> lstPathFilter) {
-        FastXmlReader reader = new FastXmlReader(file, charset, lstPathFilter);
+    public static FastXmlReader load(String fileName, Charset charset, List<String> lstPathFilter, int bufSize) {
+        return load(FileUtils.getFile(fileName), charset, lstPathFilter, bufSize);
+    }
+
+    public static FastXmlReader load(File file, Charset charset, List<String> lstPathFilter, int bufSize) {
+        FastXmlReader reader = new FastXmlReader(file, charset, lstPathFilter, bufSize);
         reader.load();
 
         return reader;
     }
 
     public static FastXmlReader load(InputStreamReader sr) {
-        FastXmlReader reader = new FastXmlReader(sr, null);
+        FastXmlReader reader = new FastXmlReader(sr, null, 0);
         reader.load();
 
         return reader;
     }
 
-    public static FastXmlReader load(InputStreamReader sr, List<String> lstPathFilter) {
-        FastXmlReader reader = new FastXmlReader(sr, lstPathFilter);
+    public static FastXmlReader load(InputStreamReader sr, List<String> lstPathFilter, int bufSize) {
+        FastXmlReader reader = new FastXmlReader(sr, lstPathFilter, bufSize);
         reader.load();
 
         return reader;
     }
 
-    protected FastXmlReader(File file, Charset charset, List<String> lstPathFilter) {
+    private void init(List<String> lstPathFilter, int bufSize) {
+        this.lstPathFilter = lstPathFilter;
+        if (bufSize < 1) {
+            bufSize = DEFAULT_BUF_SIZE;
+        }
+        this.bufSize = bufSize;
+    }
+
+    protected FastXmlReader(File file, Charset charset, List<String> lstPathFilter, int bufSize) {
         super(file, charset);
-        this.lstPathFilter = lstPathFilter;
+        init(lstPathFilter, bufSize);
     }
 
-    protected FastXmlReader(InputStreamReader sr, List<String> lstPathFilter) {
+    protected FastXmlReader(InputStreamReader sr, List<String> lstPathFilter, int bufSize) {
         super(sr);
-        this.lstPathFilter = lstPathFilter;
+        init(lstPathFilter, bufSize);
     }
 
     @Override
     public void load() {
         try {
-            setBufSize();
             buf = new char[bufSize];
 
             startDocument();
@@ -122,18 +133,6 @@ public class FastXmlReader extends AbstractReader {
         } catch (Exception e) {
             throwException("Xml", e);
         }
-    }
-
-    public int getBufSize() {
-        return this.bufSize;
-    }
-
-    public void setBufSize(int bufSize) {
-        this.bufSize = bufSize;
-    }
-
-    public void setBufSize() {
-        setBufSize(DEFAULT_BUF_SIZE);
     }
 
     private void skipSpace() {
@@ -181,17 +180,17 @@ public class FastXmlReader extends AbstractReader {
             if (bytes < bufSize) {
                 // EOF
                 if (curDepth > 0) {
-                    throw new ParseXmlException("invalid xml file.");
+                    throw new ParseXmlException("unexpected end of file.");
                 } else {
                     return;
                 }
             }
             if (offset == bufSize) {
                 read();
-                if (bytes == 0) {
+                if (bytes == -1) {
                     // EOF
                     if (curDepth > 0) {
-                        throw new ParseXmlException("invalid xml file.");
+                        throw new ParseXmlException("unexpected end of file.");
                     } else {
                         return;
                     }
@@ -218,7 +217,7 @@ public class FastXmlReader extends AbstractReader {
             }
             if (bytes < bufSize) {
                 // EOF
-                throw new ParseXmlException("invalid xml file.");
+                throw new ParseXmlException("unexpected end of file.");
             }
             if (offset == bufSize) {
                 if (bInDoubleQuote || bInSigleQuote) {
@@ -231,9 +230,9 @@ public class FastXmlReader extends AbstractReader {
                     sbText.append(buf, start, bufSize - start);
                 }
                 read();
-                if (bytes == 0) {
+                if (bytes == -1) {
                     // EOF
-                    throw new ParseXmlException("invalid xml file.");
+                    throw new ParseXmlException("unexpected end of file.");
                 }
             }
         }
@@ -374,7 +373,7 @@ public class FastXmlReader extends AbstractReader {
         }
 
         skipSpace();
-        if (offset == bytes) {
+        if (offset == bytes || bytes == -1) {
             return -1;
         }
         char c = buf[offset];
@@ -422,15 +421,18 @@ public class FastXmlReader extends AbstractReader {
                 } else {
                     // end tag
                     tagName = tagName.substring(1);
-                    String lastTagName = lstTagName.get(lstTagName.size() - 1);
-                    if (!tagName.equalsIgnoreCase(lastTagName)) {
-                        throw new ParseXmlException(
-                                String.format("tag can not be close at %d row %d column, start with %s, end with %s.",
-                                        curRow, curCol - tagName.length() - 1, lastTagName, tagName));
+                    String curPath = "/" + StringUtils.join(lstTagName.toArray(), "/") + "/";
+                    if (lstPathFilter == null || inPath(curPath)) {
+                        String lastTagName = lstTagName.get(lstTagName.size() - 1);
+                        if (!tagName.equalsIgnoreCase(lastTagName)) {
+                            throw new ParseXmlException(
+                                    String.format("tag can not be close at %d row %d column, start with %s, end with %s.",
+                                            curRow, curCol - tagName.length() - 1, lastTagName, tagName));
+                        }
+                        endElement(tagName);
                     }
                     lstTagName.remove(lstTagName.size() - 1);
                     curDepth--;
-                    endElement(tagName);
                 }
             }
             moveCursor();
