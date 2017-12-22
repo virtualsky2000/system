@@ -15,6 +15,7 @@ import javax.validation.ValidatorFactory;
 
 import system.cache.CacheManager;
 import system.exception.ApplicationException;
+import system.utils.ClassUtils;
 
 public class ValidatorUtils {
 
@@ -28,8 +29,7 @@ public class ValidatorUtils {
     public static <T> ConstraintViolation<T>[] validate(T bean) {
         Set<ConstraintViolation<T>> setViolation = validator.validate(bean);
 
-        @SuppressWarnings("unchecked")
-        ConstraintViolation<T>[] violation = setViolation.toArray(new ConstraintViolation[0]);
+        ConstraintViolation<T>[] violation = ClassUtils.cast(setViolation.toArray(new ConstraintViolation[0]));
 
         if (violation.length > 0) {
             sort(bean.getClass().getName(), violation);
@@ -44,8 +44,7 @@ public class ValidatorUtils {
             CacheManager.put(key, new ConcurrentHashMap<String, List<Long>>());
         }
 
-        @SuppressWarnings("unchecked")
-        Map<String, List<Long>> mapCache = (Map<String, List<Long>>) CacheManager.get(key);
+        Map<String, List<Long>> mapCache = ClassUtils.cast(CacheManager.get(key));
 
         for (ConstraintViolation<T> v : violation) {
             String path = v.getPropertyPath().toString();
@@ -54,10 +53,10 @@ public class ValidatorUtils {
             }
         }
 
-        Arrays.sort(violation, (o1, o2) -> {
+        Arrays.sort(violation, (item1, item2) -> {
 
-            List<Long> lstIndex1 = mapCache.get(o1.getPropertyPath().toString());
-            List<Long> lstIndex2 = mapCache.get(o2.getPropertyPath().toString());
+            List<Long> lstIndex1 = mapCache.get(item1.getPropertyPath().toString());
+            List<Long> lstIndex2 = mapCache.get(item2.getPropertyPath().toString());
             int size1 = lstIndex1.size();
             int size2 = lstIndex2.size();
 

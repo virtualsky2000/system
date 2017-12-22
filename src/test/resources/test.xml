@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE test>
+
+<test>
+	<!-- comment -->
+	<abc >1&lt;2</abc>
+	<aaa id="test"		id1="id1" name='name'	>123</aaa>
+    <bbb	id = "123" id1	=	'id1'>abc</bbb>
+	<xxx />
+	<yyy />
+
+	<a>
+		<aaa id="test">123</aaa>
+		<aaa id="test1">123</aaa>
+		<!-- com-ment -->
+	</a>
+
+</test>
+
+

@@ -1,8 +1,6 @@
 package system.reader;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 
@@ -26,11 +24,6 @@ public abstract class AbstractReader {
         log = LogManager.getLogger(this.getClass());
         this.file = file;
         this.charset = charset;
-        try {
-            this.sr = new InputStreamReader(new FileInputStream(file), charset);
-        } catch (FileNotFoundException e) {
-            throw new ApplicationException(e);
-        }
     }
 
     protected AbstractReader(InputStreamReader sr) {

@@ -1,6 +1,7 @@
 package system.xml;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
@@ -45,6 +46,8 @@ public class FastXmlReader extends AbstractReader {
     private boolean skip;
 
     private boolean escape;
+
+    private boolean equals;
 
     private List<String> lstTagName = new ArrayList<>();
 
@@ -120,16 +123,22 @@ public class FastXmlReader extends AbstractReader {
     @Override
     public void load() {
         try {
+            if (file != null) {
+                sr = new InputStreamReader(new FileInputStream(file), charset);
+            }
+
             buf = new char[bufSize];
 
             startDocument();
 
             processDocument();
 
-            while (processTag() != -1)
+            while (processText() != -1) {
                 ;
+            }
 
             endDocument();
+            sr.close();
         } catch (Exception e) {
             throwException("Xml", e);
         }
@@ -152,7 +161,7 @@ public class FastXmlReader extends AbstractReader {
                 change = true;
             }
         } catch (IOException e) {
-            throw new ParseXmlException(e);
+            throw new ParseXmlException(e, this);
         }
     }
 
@@ -180,20 +189,18 @@ public class FastXmlReader extends AbstractReader {
             if (bytes < bufSize) {
                 // EOF
                 if (curDepth > 0) {
-                    throw new ParseXmlException("unexpected end of file.");
+                    throw new ParseXmlException("unexpected end of file.", this);
                 } else {
                     return;
                 }
             }
-            if (offset == bufSize) {
-                read();
-                if (bytes == -1) {
-                    // EOF
-                    if (curDepth > 0) {
-                        throw new ParseXmlException("unexpected end of file.");
-                    } else {
-                        return;
-                    }
+            read();
+            if (bytes == -1) {
+                // EOF
+                if (curDepth > 0) {
+                    throw new ParseXmlException("unexpected end of file.", this);
+                } else {
+                    return;
                 }
             }
         }
@@ -217,30 +224,29 @@ public class FastXmlReader extends AbstractReader {
             }
             if (bytes < bufSize) {
                 // EOF
-                throw new ParseXmlException("unexpected end of file.");
+                throw new ParseXmlException("unexpected end of file.", this);
             }
-            if (offset == bufSize) {
-                if (bInDoubleQuote || bInSigleQuote) {
-                    if (change == false) {
-                        sbText.append(buf, start + 1, bufSize - start - 1);
-                    } else {
-                        sbText.append(buf, 0, bufSize);
-                    }
+            if (bInDoubleQuote || bInSigleQuote) {
+                if (change == false) {
+                    sbText.append(buf, start + 1, bufSize - start - 1);
                 } else {
-                    sbText.append(buf, start, bufSize - start);
+                    sbText.append(buf, 0, bufSize);
                 }
-                read();
-                if (bytes == -1) {
-                    // EOF
-                    throw new ParseXmlException("unexpected end of file.");
-                }
+            } else {
+                sbText.append(buf, start, bufSize - start);
+            }
+            read();
+            if (bytes == -1) {
+                // EOF
+                throw new ParseXmlException("unexpected end of file.", this);
             }
         }
     }
 
     private String getAttributeName() {
         return getText((sbText, start, c) -> {
-            if (c == ' ' || c == '\t' || c == '=') {
+            if (c == '=' || c == ' ' || c == '\t') {
+                equals = (c == '=');
                 sbText.append(buf, start, offset - start);
                 return 0;
             }
@@ -261,7 +267,7 @@ public class FastXmlReader extends AbstractReader {
                 } else if (c == '\'') {
                     bInSigleQuote = true;
                 } else {
-                    throw new ParseXmlException("attribute name must be start with \" or '.");
+                    throw new ParseXmlException("attribute name must be start with \" or '.", this);
                 }
             }
             if (bInDoubleQuote && c == '"' && !first) {
@@ -344,8 +350,7 @@ public class FastXmlReader extends AbstractReader {
         int ofs = offset;
         char c = buf[offset];
         if (c != '<') {
-            throw new ParseXmlException(
-                    String.format("document should begin with '<' at %d row %d column.", curRow, curCol));
+            throw new ParseXmlException("document should begin with '<'.", this);
         }
         moveCursor();
         String tag = getTagName();
@@ -367,7 +372,60 @@ public class FastXmlReader extends AbstractReader {
         return false;
     }
 
-    private int processTag() {
+    protected void processDoctype() {
+        moveCursor();
+        skipSpace();
+        String docType = getTagName();
+        log.debug("DOCTYPE = {}", docType);
+        skipSpace();
+        if (buf[offset] != '>') {
+            throw new ParseXmlException("DOCTYPE can not close.", this);
+        }
+    }
+
+    protected void precessComment() {
+        if (skip) {
+            skipComment();
+        } else {
+            String comment = getComment();
+            setComment(comment);
+        }
+    }
+
+    protected void processTag(String tagName) {
+        if (!tagName.startsWith("/")) {
+            // start tag
+            lstTagName.add(tagName);
+            curDepth++;
+            String curPath = "/" + StringUtils.join(lstTagName.toArray(), "/") + "/";
+            if (lstPathFilter == null || inPath(curPath)) {
+                skip = false;
+                startElement(tagName);
+                getAttributies();
+            } else {
+                skip = true;
+                skipAttributies();
+            }
+        } else {
+            // end tag
+            tagName = tagName.substring(1);
+            String curPath = "/" + StringUtils.join(lstTagName.toArray(), "/") + "/";
+            if (lstPathFilter == null || inPath(curPath)) {
+                String lastTagName = lstTagName.get(lstTagName.size() - 1);
+                if (!tagName.equalsIgnoreCase(lastTagName)) {
+                    throw new ParseXmlException(
+                            String.format("tag can not be close, start with %s, end with %s.",
+                                    lastTagName, tagName),
+                            this);
+                }
+                endElement(tagName);
+            }
+            lstTagName.remove(lstTagName.size() - 1);
+            curDepth--;
+        }
+    }
+
+    protected int processText() {
         if (offset == bytes || bytes == -1) {
             return -1;
         }
@@ -378,8 +436,7 @@ public class FastXmlReader extends AbstractReader {
         }
         char c = buf[offset];
         if (curDepth == 0 && c != '<') {
-            throw new ParseXmlException(
-                    String.format("document should begin with '<' at %d row %d column.", curRow, curCol));
+            throw new ParseXmlException("document should begin with '<'.", this);
         }
 
         if (c == '<') {
@@ -388,52 +445,12 @@ public class FastXmlReader extends AbstractReader {
 
             if (tagName.equalsIgnoreCase("!DOCTYPE")) {
                 // DOCTYPE
-                moveCursor();
-                skipSpace();
-                String docType = getTagName();
-                log.debug("DOCTYPE = {}", docType);
-
-                if (buf[offset] != '>') {
-                    throw new ParseXmlException("DOCTYPE can not close.");
-                }
+                processDoctype();
             } else if (tagName.equalsIgnoreCase("!--")) {
                 // コメント
-                if (skip) {
-                    skipComment();
-                } else {
-                    String comment = getComment();
-                    setComment(comment);
-                }
+                precessComment();
             } else {
-                if (!tagName.startsWith("/")) {
-                    // start tag
-                    lstTagName.add(tagName);
-                    curDepth++;
-                    String curPath = "/" + StringUtils.join(lstTagName.toArray(), "/") + "/";
-                    if (lstPathFilter == null || inPath(curPath)) {
-                        skip = false;
-                        startElement(tagName);
-                        getAttributies();
-                    } else {
-                        skip = true;
-                        skipAttributies();
-                    }
-                } else {
-                    // end tag
-                    tagName = tagName.substring(1);
-                    String curPath = "/" + StringUtils.join(lstTagName.toArray(), "/") + "/";
-                    if (lstPathFilter == null || inPath(curPath)) {
-                        String lastTagName = lstTagName.get(lstTagName.size() - 1);
-                        if (!tagName.equalsIgnoreCase(lastTagName)) {
-                            throw new ParseXmlException(
-                                    String.format("tag can not be close at %d row %d column, start with %s, end with %s.",
-                                            curRow, curCol - tagName.length() - 1, lastTagName, tagName));
-                        }
-                        endElement(tagName);
-                    }
-                    lstTagName.remove(lstTagName.size() - 1);
-                    curDepth--;
-                }
+                processTag(tagName);
             }
             moveCursor();
         } else {
@@ -464,23 +481,30 @@ public class FastXmlReader extends AbstractReader {
                     curDepth--;
                     return;
                 } else {
-                    throw new ParseXmlException("tag can not close.");
+                    throw new ParseXmlException("tag can not close.", this);
                 }
             } else if (c != '?') {
                 String attrName = getAttributeName();
-                moveCursor();
+                if (equals) {
+                    moveCursor();
+                } else {
+                    skipSpace();
+                    if (buf[offset] != '=') {
+                        throw new ParseXmlException("attribute has not value.", this);
+                    }
+                    moveCursor();
+                }
                 skipSpace();
                 String attrValue = getAttributeValue();
                 moveCursor();
                 startAttribute(attrName, attrValue);
             } else {
                 moveCursor();
-                skipSpace();
                 if (buf[offset] == '>') {
                     moveCursor();
                     return;
                 } else {
-                    throw new ParseXmlException("tag can not close.");
+                    throw new ParseXmlException("tag can not close.", this);
                 }
             }
         }
@@ -488,7 +512,11 @@ public class FastXmlReader extends AbstractReader {
 
     private void skipAttributeName() {
         skipText((start, c) -> {
-            if (c == ' ' || c == '\t' || c == '=') {
+            if (c == '=') {
+                equals = true;
+                return 0;
+            } else if (c == ' ' || c == '\t') {
+                equals = false;
                 return 0;
             }
             return -1;
@@ -507,7 +535,7 @@ public class FastXmlReader extends AbstractReader {
                 } else if (c == '\'') {
                     bInSigleQuote = true;
                 } else {
-                    throw new ParseXmlException("attribute name must be start with \" or '.");
+                    throw new ParseXmlException("attribute name must be start with \" or '.", this);
                 }
             }
             if (bInDoubleQuote && c == '"' && !first) {
@@ -560,18 +588,25 @@ public class FastXmlReader extends AbstractReader {
                 return;
             } else if (c == '/') {
                 moveCursor();
-                skipSpace();
                 if (buf[offset] == '>') {
                     // end tag
                     lstTagName.remove(lstTagName.size() - 1);
                     curDepth--;
                     return;
                 } else {
-                    throw new ParseXmlException("tag can not close.");
+                    throw new ParseXmlException("tag can not close.", this);
                 }
             } else if (c != '?') {
                 skipAttributeName();
-                moveCursor();
+                if (equals) {
+                    moveCursor();
+                } else {
+                    skipSpace();
+                    if (buf[offset] != '=') {
+                        throw new ParseXmlException("attribute has not value.", this);
+                    }
+                    moveCursor();
+                }
                 skipSpace();
                 skipAttributeValue();
                 moveCursor();
@@ -582,7 +617,7 @@ public class FastXmlReader extends AbstractReader {
                     moveCursor();
                     return;
                 } else {
-                    throw new ParseXmlException("tag can not close.");
+                    throw new ParseXmlException("tag can not close.", this);
                 }
             }
         }
@@ -655,12 +690,20 @@ public class FastXmlReader extends AbstractReader {
 
     public static class ParseXmlException extends ApplicationException {
 
-        public ParseXmlException(String msg) {
+        private FastXmlReader reader;
+
+        public ParseXmlException(String msg, FastXmlReader reader) {
             super(msg);
+            this.reader = reader;
         }
 
-        public ParseXmlException(Throwable cause) {
+        public ParseXmlException(Throwable cause, FastXmlReader reader) {
             super(cause);
+            this.reader = reader;
+        }
+
+        public FastXmlReader getReader() {
+            return reader;
         }
 
     }
